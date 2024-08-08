@@ -1,0 +1,61 @@
+:: 请确认您的显存至少6G，电脑磁盘空间充足 （不够用的去云端）
+:: 官网 https://github.com/svc-develop-team/so-vits-svc
+:: 以下是本地配置步骤
+:: 请确认您已经安装好vs桌面C++依赖 https://visualstudio.microsoft.com/downloads/
+:: 请确认您已经安装好anaconda，并将anaconda添加到环境变量 https://www.anaconda.com/
+:: 请确认您安装过git(https://github.com/git-for-windows/git/releases/download/v2.39.2.windows.1/Git-2.39.2-64-bit.exe)，并配置到环境变量（stable-diffusion教学已说过）
+ 
+:: git配国内镜像（网好就不用）
+git config --global url."https://ghproxy.com/https://github.com".insteadOf "https://github.com"
+:: conda配国内镜像（网好就不用）
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/
+conda config --set show_channel_urls yes
+ 
+:: 克隆库
+git clone https://github.com/svc-develop-team/so-vits-svc.git -b 4.0
+cd so-vits-svc
+:: 手动下载三个模型文件
+::https://ibm.box.com/s/z1wgl1stco8ffooyatzdwsqn2psd9lrr 安装到hubert/
+::https://huggingface.co/kingple/sovits4/tree/main D_0.pth G_0.pth安装到logs/44k/
+:: 创建conda环境
+conda create -n sovits python=3.9 -y
+:: 进入conda环境（请每次给sovits配环境都确认已在该环境）
+conda activate sovits
+ 
+ 
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pyworld praat-parselmouth fairseq librosa matplotlib tensorboard tensorboardX
+:: 网好的输入 pip install pyworld praat-parselmouth fairseq librosa matplotlib tensorboard tensorboardX
+ 
+:: 检查你的torch版本是否合适
+python
+import torch
+torch.__version__
+print(torch.cuda.is_available())
+:: 若为cpu版本
+pip uninstall torch -y
+:: 可前往https://pytorch.org/get-started/locally/#windows-pip查看脚本
+pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu117
+ 
+ 
+:: 处理数据集
+:: 可用的wav转换网站：https://www.aconvert.com/cn/audio/mp3-to-wav/
+:: 处理好之后往后执行（重采样）
+python resample.py
+:: 划分训练集 验证集 测试集
+python preprocess_flist_config.py
+:: 生成hubert与f0
+python preprocess_hubert_f0.py
+ 
+ 
+:: 修改你的config/config.json
+:: 训练前备份一下G_0和D_0
+:: 训练
+python train.py -c configs/config.json -m 44k
+ 
+ 
+:: 推理
+python inference_main.py -m "logs/44k/G_68800.pth" -c "configs/config.json" -n "bgm_04.wav" -t 0 -s "Lapland"
+:: 后面 -a 就是 f0
